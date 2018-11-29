@@ -19,24 +19,44 @@
         android:layout_above="@id/buttonView"
         android:layout_marginBottom="8dp">
 
-        <EditText
-            android:id="@+id/et_ipAddress"
+        <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:digits="0123456789."
-            android:ems="10"
-            android:hint="Enter IP adress"
-            android:inputType="number"
-            android:textColorHighlight="#FFF"
-            android:maxLines="1"
-            android:maxLength="15"/>
+            android:orientation="vertical"
+            android:layout_weight="5">
+
+            <EditText
+                android:id="@+id/et_ipAddress"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+
+                android:digits="0123456789."
+                android:ems="10"
+                android:hint="Raspberry Pi IP adress"
+                android:inputType="number"
+                android:textColorHighlight="#FFF"
+                android:maxLines="1"
+                android:maxLength="15"/>
+
+            <EditText
+                android:id="@+id/et_port"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:ems="10"
+                android:hint="Port"
+                android:inputType="number"
+                android:textColorHighlight="#FFF"
+                android:maxLines="1"
+                android:maxLength="15"/>
+
+        </LinearLayout>
+
 
         <Button
             android:id="@+id/connect"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_gravity="right"
+            android:layout_gravity="center"
             android:layout_weight="1"
             android:text="Connect" />
 
