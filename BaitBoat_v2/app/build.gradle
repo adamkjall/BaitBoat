@@ -28,4 +28,11 @@ dependencies {
 
     // OpenStreetMaps
     implementation 'org.osmdroid:osmdroid-android:6.0.2'
+
+    // AndroidJoyStickView
+    implementation 'com.jackandphantom.android:joystickview:1.0.2'
+
+    // FloatingToolbar
+    implementation 'com.github.rubensousa:floatingtoolbar:1.5.1'
+    implementation 'com.android.support:design:28.0.0'
 }
