@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/settings_layout"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:foregroundGravity="center"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:layout_centerHorizontal="true">
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content">
+
+        <TextView
+            android:id="@+id/label_ipAddress"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Ip address:" />
+
+        <EditText
+            android:id="@+id/et_ipAddress"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:digits="0123456789."
+            android:minWidth="100dp"
+            android:maxLength="15"
+            android:inputType="number" />
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content">
+
+        <TextView
+            android:id="@+id/label_port"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Port:" />
+
+        <EditText
+            android:id="@+id/et_port"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:digits="0123456789"
+            android:maxLength="15"
+            android:minWidth="100dp"
+            android:inputType="number" />
+
+
+    </LinearLayout>
+
+</LinearLayout>

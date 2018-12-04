@@ -1,6 +1,7 @@
 package com.adamk.baitboat_v2;
 
 import android.content.Context;
+import android.graphics.Point;
 import android.preference.PreferenceManager;
 import android.support.design.widget.FloatingActionButton;
 import android.Manifest;
@@ -9,16 +10,15 @@ import android.content.pm.PackageManager;
 import android.os.AsyncTask;
 
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.app.FragmentManager;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 
+import android.util.DisplayMetrics;
 import android.util.Log;
+import android.view.Display;
 import android.view.MenuItem;
-import android.view.View;
-import android.widget.Button;
 import android.widget.EditText;
-
-import android.widget.TextView;
 
 import com.github.rubensousa.floatingtoolbar.FloatingToolbar;
 import com.github.rubensousa.floatingtoolbar.FloatingToolbarMenuBuilder;
@@ -29,6 +29,11 @@ import org.osmdroid.config.Configuration;
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory;
 import org.osmdroid.util.GeoPoint;
 import org.osmdroid.views.MapView;
+import org.osmdroid.views.overlay.compass.CompassOverlay;
+import org.osmdroid.views.overlay.compass.InternalCompassOrientationProvider;
+import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider;
+import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay;
+
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -38,18 +43,23 @@ import java.net.UnknownHostException;
 
 
 public class MainActivity extends AppCompatActivity {
+    // Class variables used when connection to the raspberry pi
+    private static String wifiModuleIp = "";
+    private static String CMD = "0";
+    private static int wifiModulePort = 0;
 
-    private MapView map;
+    // OpenStreetMap variables
+    private MapView mapView;
+    private MyLocationNewOverlay myLocationOverlay = null;
+    private CompassOverlay mCompassOverlay;
+    private IMapController mapController;
 
-    EditText txtAddress;
-    
-    Socket myAppSocket = null;
+    // The sliding menu
+    private FloatingToolbar floatingToolbar;
 
-    public static String wifiModuleIp = "";
-    public static int wifiModulePort = 0;
-    public static String CMD = "0";
+    // Views
+    private EditText tv_ipAddress;
 
-    private FloatingToolbar mFloatingToolbar;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -57,25 +67,57 @@ public class MainActivity extends AppCompatActivity {
 
         checkLocationPermissions();
 
-        Context ctx = getApplicationContext();
-        Configuration.getInstance().load(ctx, PreferenceManager.getDefaultSharedPreferences(ctx));
+        Context context = getApplicationContext();
+        Configuration.getInstance().load(context, PreferenceManager.getDefaultSharedPreferences(context));
 
         setContentView(R.layout.activity_main);
 
-        map = (MapView) findViewById(R.id.map);
-        map.setTileSource(TileSourceFactory.MAPNIK);
+        tv_ipAddress = (EditText) findViewById(R.id.ipAddress);
 
-        map.setBuiltInZoomControls(true);
-        map.setMultiTouchControls(true);
+        // Set up the mapView
+        mapView = (MapView) findViewById(R.id.map);
+        mapView.setTileSource(TileSourceFactory.MAPNIK);
+        mapView.setBuiltInZoomControls(true);
+        mapView.setMultiTouchControls(true);
 
-        IMapController mapController = map.getController();
-        mapController.setZoom(19);
+        // Default mapView position
+        mapController = mapView.getController();
+        mapController.setZoom(19.0);
         GeoPoint startPoint = new GeoPoint(57.70639, 11.93827);
         mapController.setCenter(startPoint);
 
-        FloatingActionButton fab = findViewById(R.id.fab);
-        mFloatingToolbar = findViewById(R.id.floatingToolbar);
-        mFloatingToolbar.setMenu(new FloatingToolbarMenuBuilder(this)
+        // Set up the gps provider
+        GpsMyLocationProvider gpsMyLocationProvider = new GpsMyLocationProvider(context);
+        gpsMyLocationProvider.setLocationUpdateMinDistance(10);
+        gpsMyLocationProvider.setLocationUpdateMinTime(1000);
+
+        // My location overlay enables the map to follow your position
+        myLocationOverlay = new MyLocationNewOverlay(gpsMyLocationProvider, mapView);
+        myLocationOverlay.enableFollowLocation();
+        myLocationOverlay.setDrawAccuracyEnabled(false);
+
+        // Compass overlay
+        mCompassOverlay = new CompassOverlay(context, new InternalCompassOrientationProvider(context), mapView);
+        mCompassOverlay.enableCompass();
+
+        // Find device width and height, and calculate it's height/width in pixel density
+        Display display = getWindowManager().getDefaultDisplay();
+        DisplayMetrics outMetrics = new DisplayMetrics();
+        display.getMetrics(outMetrics);
+        float density = getResources().getDisplayMetrics().density;
+        float dpHeight = outMetrics.heightPixels / density;
+        float dpWidth = outMetrics.widthPixels / density;
+
+        // Relocate the compass overlay to the bottom right corner
+        mCompassOverlay.setCompassCenter(dpWidth * 0.94f, dpHeight * 0.83f);
+
+        // Add overlays to the mapView
+        mapView.getOverlays().add(myLocationOverlay);
+        mapView.getOverlays().add(mCompassOverlay);
+
+        // Toolbar menu with drawer feature
+        floatingToolbar = findViewById(R.id.floatingToolbar);
+        floatingToolbar.setMenu(new FloatingToolbarMenuBuilder(context)
                 .addItem(R.id.action_unread, R.drawable.ic_markunread_black_24dp, "Mark unread")
                 .addItem(R.id.action_copy, R.drawable.ic_content_copy_black_24dp, "Copy")
                 .addItem(R.id.action_google, R.drawable.ic_google_plus_box, "Google+")
@@ -83,19 +125,9 @@ public class MainActivity extends AppCompatActivity {
                 .addItem(R.id.action_twitter, R.drawable.ic_twitter_box, "Twitter")
                 .build());
 
-        mFloatingToolbar.attachFab(fab);
-
-        mFloatingToolbar.setClickListener(new FloatingToolbar.ItemClickListener() {
-            @Override
-            public void onItemClick(MenuItem item) {
-
-            }
-
-            @Override
-            public void onItemLongClick(MenuItem item) {
-
-            }
-        });
+        // FAB to show the floating toolbar
+        FloatingActionButton fab = findViewById(R.id.fab);
+        floatingToolbar.attachFab(fab);
 
         // Joystick
         JoyStickView joyStickView = findViewById(R.id.joy);
@@ -108,81 +140,65 @@ public class MainActivity extends AppCompatActivity {
                 boolean left = angle >= 135 && angle < 225;
                 boolean reverse = angle >= 225 && angle <= 315;
 
-                if(right) {
+                if (right) {
                     startTask("Right");
-                    System.out.println("Right");
                 }
-                if(ahead) {
+                if (ahead) {
                     startTask("Ahead");
-                    System.out.println("Ahead");
                 }
-                if(left) {
+                if (left) {
                     startTask("Left");
-                    System.out.println("Left");
                 }
-                if(reverse) {
+                if (reverse) {
                     startTask("Reverse");
-                    System.out.println("Reverse");
                 }
-
-
             }
         });
 
-
-
-
-
-
-
-
-        // load/initialize the osmdroid configuration
-        //final Context ctx = getApplicationContext();
-        //Configuration.getInstance().load(ctx, PreferenceManager.getDefaultSharedPreferences(ctx));
-
-
-        txtAddress = (EditText) findViewById(R.id.ipAddress);
+        showSettingsDialog();
 
     }
 
-    private void startTask(String cmd){
+    private void startTask(String cmd) {
         getIPandPort();
         CMD = cmd;
         Socket_AsyncTask task = new Socket_AsyncTask();
         task.execute();
     }
 
-    public void getIPandPort()
-    {
-        String iPandPort = txtAddress.getText().toString();
-        Log.d("MYTEST","IP String: "+ iPandPort);
-        String temp[]= iPandPort.split(":");
+    public void getIPandPort() {
+        String iPandPort = tv_ipAddress.getText().toString();
+        String temp[] = iPandPort.split(":");
         wifiModuleIp = temp[0];
         wifiModulePort = Integer.valueOf(temp[1]);
-        Log.d("MY TEST","IP:" +wifiModuleIp);
-        Log.d("MY TEST","PORT:"+wifiModulePort);
     }
 
+    private void showSettingsDialog() {
+        FragmentManager fm = getSupportFragmentManager();
+        SettingsDialogFragment settingsDialog = SettingsDialogFragment.newInstance("Connect to Baitboat");
+        settingsDialog.show(fm, "fragment_settings");
+    }
 
-    public class Socket_AsyncTask extends AsyncTask<Void,Void,Void>
-    {
+    public class Socket_AsyncTask extends AsyncTask<Void, Void, Void> {
         Socket socket;
 
         @Override
-        protected Void doInBackground(Void... params){
-            try{
+        protected Void doInBackground(Void... params) {
+            try {
                 InetAddress inetAddress = InetAddress.getByName(MainActivity.wifiModuleIp);
-                socket = new java.net.Socket(inetAddress,MainActivity.wifiModulePort);
+                socket = new java.net.Socket(inetAddress, MainActivity.wifiModulePort);
                 DataOutputStream dataOutputStream = new DataOutputStream(socket.getOutputStream());
                 dataOutputStream.writeBytes(CMD);
                 dataOutputStream.close();
                 socket.close();
-            }catch (UnknownHostException e){e.printStackTrace();}catch (IOException e){e.printStackTrace();}
+            } catch (UnknownHostException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
             return null;
         }
     }
-
-
 
     /**
      * Prompts the user for location permissions
@@ -210,7 +226,8 @@ public class MainActivity extends AppCompatActivity {
         //if you make changes to the configuration, use
         //SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
         //Configuration.getInstance().load(this, PreferenceManager.getDefaultSharedPreferences(this));
-        map.onResume(); //needed for compass, my location overlays, v6.0.0 and up
+        myLocationOverlay.enableMyLocation();
+        mapView.onResume(); //needed for compass, my location overlays, v6.0.0 and up
     }
 
     /**
@@ -222,6 +239,7 @@ public class MainActivity extends AppCompatActivity {
         //if you make changes to the configuration, use
         //SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
         //Configuration.getInstance().save(this, prefs);
-        map.onPause();  //needed for compass, my location overlays, v6.0.0 and up
+        myLocationOverlay.disableMyLocation();
+        mapView.onPause();  //needed for compass, my location overlays, v6.0.0 and up
     }
 }
