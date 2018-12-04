@@ -5,7 +5,6 @@
     <item
         android:id="@+id/action_unread"
         android:icon="@drawable/ic_markunread_black_24dp"
-
         android:title="Mark unread"
         app:showAsAction="ifRoom" />
 
@@ -22,14 +21,14 @@
         app:showAsAction="ifRoom" />
 
     <item
-        android:id="@+id/action_facebook"
-        android:icon="@drawable/ic_facebook_box"
-        android:title="Facebook"
+        android:id="@+id/action_settings"
+        android:icon="@drawable/ic_settings"
+        android:title="Settings"
         app:showAsAction="ifRoom" />
 
     <item
-        android:id="@+id/action_twitter"
-        android:icon="@drawable/ic_twitter_box"
-        android:title="Twitter"
+        android:id="@+id/action_close_menu"
+        android:icon="@drawable/ic_close_menu"
+        android:title="Close menu"
         app:showAsAction="ifRoom" />
 </menu>

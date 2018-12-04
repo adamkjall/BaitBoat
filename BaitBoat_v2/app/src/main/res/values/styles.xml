@@ -17,7 +17,7 @@
     <style name="AppDialogTheme" parent="Theme.AppCompat.Light.Dialog">
         <!-- Define color properties as desired -->
         <item name="colorPrimary">@color/dark_blue</item>
-        <item name="colorPrimaryDark">#000</item>
+        <item name="colorPrimaryDark">#000000</item>
         <item name="android:textColorHighlight">@color/light_blue</item>
         <item name="colorAccent">@color/dark_blue</item>
         <item name="colorControlNormal">@color/dark_blue</item>

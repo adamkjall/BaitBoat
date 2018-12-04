@@ -1,7 +1,9 @@
 package com.adamk.baitboat_v2;
 
 import android.content.Context;
-import android.graphics.Point;
+import android.content.DialogInterface;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.preference.PreferenceManager;
 import android.support.design.widget.FloatingActionButton;
 import android.Manifest;
@@ -10,30 +12,30 @@ import android.content.pm.PackageManager;
 import android.os.AsyncTask;
 
 import android.support.v4.app.ActivityCompat;
-import android.support.v4.app.FragmentManager;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 
-import android.util.DisplayMetrics;
-import android.util.Log;
-import android.view.Display;
+import android.text.InputType;
+import android.text.method.DigitsKeyListener;
+
 import android.view.MenuItem;
+import android.view.View;
+import android.view.inputmethod.EditorInfo;
 import android.widget.EditText;
 
 import com.github.rubensousa.floatingtoolbar.FloatingToolbar;
-import com.github.rubensousa.floatingtoolbar.FloatingToolbarMenuBuilder;
 import com.jackandphantom.joystickview.JoyStickView;
 
 import org.osmdroid.api.IMapController;
 import org.osmdroid.config.Configuration;
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory;
-import org.osmdroid.util.GeoPoint;
+
 import org.osmdroid.views.MapView;
 import org.osmdroid.views.overlay.compass.CompassOverlay;
 import org.osmdroid.views.overlay.compass.InternalCompassOrientationProvider;
 import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider;
 import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay;
-
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -44,9 +46,9 @@ import java.net.UnknownHostException;
 
 public class MainActivity extends AppCompatActivity {
     // Class variables used when connection to the raspberry pi
-    private static String wifiModuleIp = "";
+    private static String serverIP = "";
     private static String CMD = "0";
-    private static int wifiModulePort = 0;
+    private static int serverPort = 21567;
 
     // OpenStreetMap variables
     private MapView mapView;
@@ -57,22 +59,17 @@ public class MainActivity extends AppCompatActivity {
     // The sliding menu
     private FloatingToolbar floatingToolbar;
 
-    // Views
-    private EditText tv_ipAddress;
-
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         checkLocationPermissions();
 
-        Context context = getApplicationContext();
+        final Context context = getApplicationContext();
         Configuration.getInstance().load(context, PreferenceManager.getDefaultSharedPreferences(context));
+        Configuration.getInstance().setUserAgentValue(getPackageName());
 
         setContentView(R.layout.activity_main);
-
-        tv_ipAddress = (EditText) findViewById(R.id.ipAddress);
 
         // Set up the mapView
         mapView = (MapView) findViewById(R.id.map);
@@ -83,33 +80,34 @@ public class MainActivity extends AppCompatActivity {
         // Default mapView position
         mapController = mapView.getController();
         mapController.setZoom(19.0);
-        GeoPoint startPoint = new GeoPoint(57.70639, 11.93827);
-        mapController.setCenter(startPoint);
 
-        // Set up the gps provider
+        // Instantiate the gps provider
         GpsMyLocationProvider gpsMyLocationProvider = new GpsMyLocationProvider(context);
-        gpsMyLocationProvider.setLocationUpdateMinDistance(10);
-        gpsMyLocationProvider.setLocationUpdateMinTime(1000);
 
         // My location overlay enables the map to follow your position
         myLocationOverlay = new MyLocationNewOverlay(gpsMyLocationProvider, mapView);
         myLocationOverlay.enableFollowLocation();
         myLocationOverlay.setDrawAccuracyEnabled(false);
 
+        // Change standard position icon
+        Bitmap icon = BitmapFactory.decodeResource(context.getResources(), R.drawable.marker_cluster);
+        //myLocationOverlay.setPersonIcon(icon);
+        myLocationOverlay.setDirectionArrow(icon, icon);
+
         // Compass overlay
         mCompassOverlay = new CompassOverlay(context, new InternalCompassOrientationProvider(context), mapView);
         mCompassOverlay.enableCompass();
 
         // Find device width and height, and calculate it's height/width in pixel density
-        Display display = getWindowManager().getDefaultDisplay();
-        DisplayMetrics outMetrics = new DisplayMetrics();
-        display.getMetrics(outMetrics);
-        float density = getResources().getDisplayMetrics().density;
-        float dpHeight = outMetrics.heightPixels / density;
-        float dpWidth = outMetrics.widthPixels / density;
+        //Display display = getWindowManager().getDefaultDisplay();
+        //DisplayMetrics outMetrics = new DisplayMetrics();
+        //display.getMetrics(outMetrics);
+        //float density = getResources().getDisplayMetrics().density;
+        //float dpHeight = outMetrics.heightPixels / density;
+        //float dpWidth = outMetrics.widthPixels / density;
 
         // Relocate the compass overlay to the bottom right corner
-        mCompassOverlay.setCompassCenter(dpWidth * 0.94f, dpHeight * 0.83f);
+        //mCompassOverlay.setCompassCenter(dpWidth * 0.94f, dpHeight * 0.83f);
 
         // Add overlays to the mapView
         mapView.getOverlays().add(myLocationOverlay);
@@ -117,87 +115,95 @@ public class MainActivity extends AppCompatActivity {
 
         // Toolbar menu with drawer feature
         floatingToolbar = findViewById(R.id.floatingToolbar);
-        floatingToolbar.setMenu(new FloatingToolbarMenuBuilder(context)
-                .addItem(R.id.action_unread, R.drawable.ic_markunread_black_24dp, "Mark unread")
-                .addItem(R.id.action_copy, R.drawable.ic_content_copy_black_24dp, "Copy")
-                .addItem(R.id.action_google, R.drawable.ic_google_plus_box, "Google+")
-                .addItem(R.id.action_facebook, R.drawable.ic_facebook_box, "Facebook")
-                .addItem(R.id.action_twitter, R.drawable.ic_twitter_box, "Twitter")
-                .build());
+        floatingToolbar.enableAutoHide(false);
+        floatingToolbar.setClickListener(new FloatingToolbar.ItemClickListener() {
+            @Override
+            public void onItemClick(MenuItem item) {
+                int itemID = item.getItemId();
+                switch (itemID) {
+                    case R.id.action_close_menu:
+                        floatingToolbar.hide();
+                        break;
+                    case R.id.action_settings:
+                        showConnectDialog();
+                        break;
+                    case R.id.action_google:
+                        break;
+                    case R.id.action_copy:
+                        break;
+                    case R.id.action_unread:
+                        break;
+                }
+            }
+
+            @Override
+            public void onItemLongClick(MenuItem item) {
+            }
+        });
 
         // FAB to show the floating toolbar
-        FloatingActionButton fab = findViewById(R.id.fab);
+        FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab_menu);
         floatingToolbar.attachFab(fab);
+
+        // FAB to center map around device position
+        FloatingActionButton followButton = (FloatingActionButton) findViewById(R.id.fab_centerMap);
+        followButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                myLocationOverlay.enableFollowLocation();
+                mapController.setZoom(19.0);
+            }
+        });
 
         // Joystick
         JoyStickView joyStickView = findViewById(R.id.joy);
         joyStickView.setOnMoveListener(new JoyStickView.OnMoveListener() {
             @Override
             public void onMove(double angle, float strength) {
-
                 boolean right = angle >= 0 && angle < 45 || angle <= 360 && angle > 315;
                 boolean ahead = 45 <= angle && angle < 135;
                 boolean left = angle >= 135 && angle < 225;
                 boolean reverse = angle >= 225 && angle <= 315;
+                boolean stop = strength == 0;
 
-                if (right) {
-                    startTask("Right");
-                }
-                if (ahead) {
-                    startTask("Ahead");
-                }
-                if (left) {
-                    startTask("Left");
-                }
-                if (reverse) {
-                    startTask("Reverse");
-                }
+
+                if (right) startTask("Right");
+                if (ahead) startTask("Ahead");
+                if (left) startTask("Left");
+                if (reverse) startTask("Reverse");
+
             }
         });
 
-        showSettingsDialog();
-
+        showConnectDialog();
     }
 
     private void startTask(String cmd) {
-        getIPandPort();
         CMD = cmd;
         Socket_AsyncTask task = new Socket_AsyncTask();
         task.execute();
     }
 
-    public void getIPandPort() {
-        String iPandPort = tv_ipAddress.getText().toString();
-        String temp[] = iPandPort.split(":");
-        wifiModuleIp = temp[0];
-        wifiModulePort = Integer.valueOf(temp[1]);
-    }
+    private void showConnectDialog() {
+        final EditText et_ipAddress = new EditText(this);
+        et_ipAddress.setHint("Enter IP address here");
+        et_ipAddress.setInputType(InputType.TYPE_CLASS_NUMBER);
+        et_ipAddress.setKeyListener(DigitsKeyListener.getInstance(".0123456789"));
+        et_ipAddress.setImeOptions(EditorInfo.IME_FLAG_NO_EXTRACT_UI);
 
-    private void showSettingsDialog() {
-        FragmentManager fm = getSupportFragmentManager();
-        SettingsDialogFragment settingsDialog = SettingsDialogFragment.newInstance("Connect to Baitboat");
-        settingsDialog.show(fm, "fragment_settings");
-    }
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("Connect to Raspberry Pi")
+                .setView(et_ipAddress)
+                .setPositiveButton("Connect", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        serverIP = String.valueOf(et_ipAddress.getText());
+                    }
+                })
+                .setNegativeButton("Cancel", null)
+                .create();
 
-    public class Socket_AsyncTask extends AsyncTask<Void, Void, Void> {
-        Socket socket;
-
-        @Override
-        protected Void doInBackground(Void... params) {
-            try {
-                InetAddress inetAddress = InetAddress.getByName(MainActivity.wifiModuleIp);
-                socket = new java.net.Socket(inetAddress, MainActivity.wifiModulePort);
-                DataOutputStream dataOutputStream = new DataOutputStream(socket.getOutputStream());
-                dataOutputStream.writeBytes(CMD);
-                dataOutputStream.close();
-                socket.close();
-            } catch (UnknownHostException e) {
-                e.printStackTrace();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-            return null;
-        }
+        dialog.show();
     }
 
     /**
@@ -215,7 +221,6 @@ public class MainActivity extends AppCompatActivity {
             }, 1);
         }
     }
-
 
     /**
      * Runs when app is resumed
@@ -241,5 +246,29 @@ public class MainActivity extends AppCompatActivity {
         //Configuration.getInstance().save(this, prefs);
         myLocationOverlay.disableMyLocation();
         mapView.onPause();  //needed for compass, my location overlays, v6.0.0 and up
+    }
+
+
+    // Helper class that runs async background tasks, when executed it will send commands to a
+    // server program running on the network.
+    public class Socket_AsyncTask extends AsyncTask<Void, Void, Void> {
+        Socket socket;
+
+        @Override
+        protected Void doInBackground(Void... params) {
+            try {
+                InetAddress inetAddress = InetAddress.getByName(MainActivity.serverIP);
+                socket = new java.net.Socket(inetAddress, MainActivity.serverPort);
+                DataOutputStream dataOutputStream = new DataOutputStream(socket.getOutputStream());
+                dataOutputStream.writeBytes(CMD);
+                dataOutputStream.close();
+                socket.close();
+            } catch (UnknownHostException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            return null;
+        }
     }
 }
