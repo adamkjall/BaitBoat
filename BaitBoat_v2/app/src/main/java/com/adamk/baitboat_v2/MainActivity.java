@@ -151,7 +151,6 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 myLocationOverlay.enableFollowLocation();
-                mapController.setZoom(19.0);
             }
         });
 
@@ -186,11 +185,12 @@ public class MainActivity extends AppCompatActivity {
 
     private void showConnectDialog() {
         final EditText et_ipAddress = new EditText(this);
+        et_ipAddress.setText(serverIP);
         et_ipAddress.setHint("Enter IP address here");
         et_ipAddress.setInputType(InputType.TYPE_CLASS_NUMBER);
         et_ipAddress.setKeyListener(DigitsKeyListener.getInstance(".0123456789"));
         et_ipAddress.setImeOptions(EditorInfo.IME_FLAG_NO_EXTRACT_UI);
-
+        
         AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("Connect to Raspberry Pi")
                 .setView(et_ipAddress)
