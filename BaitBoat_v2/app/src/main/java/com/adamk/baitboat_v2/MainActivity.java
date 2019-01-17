@@ -9,7 +9,6 @@ import android.support.design.widget.FloatingActionButton;
 import android.Manifest;
 
 import android.content.pm.PackageManager;
-import android.os.AsyncTask;
 
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AlertDialog;
@@ -37,24 +36,14 @@ import org.osmdroid.views.overlay.compass.InternalCompassOrientationProvider;
 import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider;
 import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay;
 
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.net.InetAddress;
-import java.net.Socket;
-import java.net.UnknownHostException;
-
-
 public class MainActivity extends AppCompatActivity {
     // Class variables used when connection to the raspberry pi
-    private static String serverIP = "";
-    private static String CMD = "0";
-    private static int serverPort = 21567;
+    private static String serverIP = "192.168.1.5";
+    private static final String SERVER_PORT = "21567";
 
     // OpenStreetMap variables
     private MapView mapView;
     private MyLocationNewOverlay myLocationOverlay = null;
-    private CompassOverlay mCompassOverlay;
-    private IMapController mapController;
 
     // The sliding menu
     private FloatingToolbar floatingToolbar;
@@ -71,48 +60,63 @@ public class MainActivity extends AppCompatActivity {
 
         setContentView(R.layout.activity_main);
 
-        // Set up the mapView
-        mapView = (MapView) findViewById(R.id.map);
-        mapView.setTileSource(TileSourceFactory.MAPNIK);
-        mapView.setBuiltInZoomControls(true);
-        mapView.setMultiTouchControls(true);
+        setupMap(context);
 
-        // Default mapView position
-        mapController = mapView.getController();
-        mapController.setZoom(19.0);
+        // Sliding menu bar with a fab that toggles show/hide
+        setupMenuBar();
 
-        // Instantiate the gps provider
-        GpsMyLocationProvider gpsMyLocationProvider = new GpsMyLocationProvider(context);
+        // Fab that'll center map around device gps location
+        setupPositionFAB();
 
-        // My location overlay enables the map to follow your position
-        myLocationOverlay = new MyLocationNewOverlay(gpsMyLocationProvider, mapView);
-        myLocationOverlay.enableFollowLocation();
-        myLocationOverlay.setDrawAccuracyEnabled(false);
+        setupJoyStick();
 
-        // Change standard position icon
-        Bitmap icon = BitmapFactory.decodeResource(context.getResources(), R.drawable.marker_cluster);
-        //myLocationOverlay.setPersonIcon(icon);
-        myLocationOverlay.setDirectionArrow(icon, icon);
+        // Dialog for ip-address input
+        showConnectDialog();
+    }
 
-        // Compass overlay
-        mCompassOverlay = new CompassOverlay(context, new InternalCompassOrientationProvider(context), mapView);
-        mCompassOverlay.enableCompass();
+    /**
+     * Creates a joystick view and then connect a onMove listener
+     * that listens to the joystick's input and starts a async task
+     * with the command as a parameter.
+     */
+    private void setupJoyStick() {
+        // Joystick
+        JoyStickView joyStickView = findViewById(R.id.joy);
+        joyStickView.setOnMoveListener(new JoyStickView.OnMoveListener() {
+            @Override
+            public void onMove(double angle, float strength) {
+                boolean right = angle >= 0 && angle < 45 || angle <= 360 && angle > 315;
+                boolean ahead = 45 <= angle && angle < 135;
+                boolean left = angle >= 135 && angle < 225;
+                boolean reverse = angle >= 225 && angle <= 315;
 
-        // Find device width and height, and calculate it's height/width in pixel density
-        //Display display = getWindowManager().getDefaultDisplay();
-        //DisplayMetrics outMetrics = new DisplayMetrics();
-        //display.getMetrics(outMetrics);
-        //float density = getResources().getDisplayMetrics().density;
-        //float dpHeight = outMetrics.heightPixels / density;
-        //float dpWidth = outMetrics.widthPixels / density;
+                if (right) startTask("Right");
+                if (ahead) startTask("Ahead");
+                if (left) startTask("Left");
+                if (reverse) startTask("Reverse");
+            }
+        });
+    }
 
-        // Relocate the compass overlay to the bottom right corner
-        //mCompassOverlay.setCompassCenter(dpWidth * 0.94f, dpHeight * 0.83f);
+    /**
+     * Floating action button that centers the map
+     * around the device gps position.
+     */
+    private void setupPositionFAB() {
+        // FAB to center map around device position
+        FloatingActionButton followButton = (FloatingActionButton) findViewById(R.id.fab_centerMap);
+        followButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                myLocationOverlay.enableFollowLocation();
+            }
+        });
+    }
 
-        // Add overlays to the mapView
-        mapView.getOverlays().add(myLocationOverlay);
-        mapView.getOverlays().add(mCompassOverlay);
-
+    /**
+     * Sliding menu bar that can be shown/hidden.
+     */
+    private void setupMenuBar() {
         // Toolbar menu with drawer feature
         floatingToolbar = findViewById(R.id.floatingToolbar);
         floatingToolbar.enableAutoHide(false);
@@ -144,45 +148,62 @@ public class MainActivity extends AppCompatActivity {
         // FAB to show the floating toolbar
         FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab_menu);
         floatingToolbar.attachFab(fab);
-
-        // FAB to center map around device position
-        FloatingActionButton followButton = (FloatingActionButton) findViewById(R.id.fab_centerMap);
-        followButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                myLocationOverlay.enableFollowLocation();
-            }
-        });
-
-        // Joystick
-        JoyStickView joyStickView = findViewById(R.id.joy);
-        joyStickView.setOnMoveListener(new JoyStickView.OnMoveListener() {
-            @Override
-            public void onMove(double angle, float strength) {
-                boolean right = angle >= 0 && angle < 45 || angle <= 360 && angle > 315;
-                boolean ahead = 45 <= angle && angle < 135;
-                boolean left = angle >= 135 && angle < 225;
-                boolean reverse = angle >= 225 && angle <= 315;
-                boolean stop = strength == 0;
-
-
-                if (right) startTask("Right");
-                if (ahead) startTask("Ahead");
-                if (left) startTask("Left");
-                if (reverse) startTask("Reverse");
-
-            }
-        });
-
-        showConnectDialog();
     }
 
+    /**
+     * Setup the map widget, using osmdroid.
+     * https://github.com/osmdroid/osmdroid
+     *
+     * @param context Application context
+     */
+    private void setupMap(Context context) {
+        // Set up the mapView
+        mapView = (MapView) findViewById(R.id.map);
+        mapView.setTileSource(TileSourceFactory.MAPNIK);
+        mapView.setBuiltInZoomControls(true);
+        mapView.setMultiTouchControls(true);
+
+        // Default mapView position
+        IMapController mapController = mapView.getController();
+        mapController.setZoom(19.0);
+
+        // Instantiate the gps provider
+        GpsMyLocationProvider gpsMyLocationProvider = new GpsMyLocationProvider(context);
+
+        // My location overlay enables the map to follow your position
+        myLocationOverlay = new MyLocationNewOverlay(gpsMyLocationProvider, mapView);
+        myLocationOverlay.enableFollowLocation();
+        myLocationOverlay.setDrawAccuracyEnabled(false);
+
+        // Change standard position icon
+        Bitmap icon = BitmapFactory.decodeResource(context.getResources(), R.drawable.marker_cluster);
+        //myLocationOverlay.setPersonIcon(icon);
+        myLocationOverlay.setDirectionArrow(icon, icon);
+
+        // Compass overlay
+        CompassOverlay mCompassOverlay = new CompassOverlay(context, new InternalCompassOrientationProvider(context), mapView);
+        mCompassOverlay.enableCompass();
+
+        // Add overlays to the mapView
+        mapView.getOverlays().add(myLocationOverlay);
+        mapView.getOverlays().add(mCompassOverlay);
+    }
+
+    /**
+     * Start an async task that will send a command
+     * using TCP Socket.
+     *
+     * @param cmd Command to send to the server.
+     */
     private void startTask(String cmd) {
-        CMD = cmd;
-        Socket_AsyncTask task = new Socket_AsyncTask();
-        task.execute();
+        // The task will handle the output stream
+        SocketAsyncTask task = new SocketAsyncTask();
+        task.execute(serverIP, SERVER_PORT, cmd);
     }
 
+    /**
+     * Prompt the user for an ip-address.
+     */
     private void showConnectDialog() {
         final EditText et_ipAddress = new EditText(this);
         et_ipAddress.setText(serverIP);
@@ -190,14 +211,14 @@ public class MainActivity extends AppCompatActivity {
         et_ipAddress.setInputType(InputType.TYPE_CLASS_NUMBER);
         et_ipAddress.setKeyListener(DigitsKeyListener.getInstance(".0123456789"));
         et_ipAddress.setImeOptions(EditorInfo.IME_FLAG_NO_EXTRACT_UI);
-        
+
         AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("Connect to Raspberry Pi")
                 .setView(et_ipAddress)
                 .setPositiveButton("Connect", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
-                        serverIP = String.valueOf(et_ipAddress.getText());
+                        serverIP = et_ipAddress.getText().toString();
                     }
                 })
                 .setNegativeButton("Cancel", null)
@@ -210,7 +231,6 @@ public class MainActivity extends AppCompatActivity {
      * Prompts the user for location permissions
      */
     private void checkLocationPermissions() {
-        // check for location permissions
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
                 != PackageManager.PERMISSION_GRANTED
                 && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
@@ -248,27 +268,4 @@ public class MainActivity extends AppCompatActivity {
         mapView.onPause();  //needed for compass, my location overlays, v6.0.0 and up
     }
 
-
-    // Helper class that runs async background tasks, when executed it will send commands to a
-    // server program running on the network.
-    public class Socket_AsyncTask extends AsyncTask<Void, Void, Void> {
-        Socket socket;
-
-        @Override
-        protected Void doInBackground(Void... params) {
-            try {
-                InetAddress inetAddress = InetAddress.getByName(MainActivity.serverIP);
-                socket = new java.net.Socket(inetAddress, MainActivity.serverPort);
-                DataOutputStream dataOutputStream = new DataOutputStream(socket.getOutputStream());
-                dataOutputStream.writeBytes(CMD);
-                dataOutputStream.close();
-                socket.close();
-            } catch (UnknownHostException e) {
-                e.printStackTrace();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-            return null;
-        }
-    }
 }
