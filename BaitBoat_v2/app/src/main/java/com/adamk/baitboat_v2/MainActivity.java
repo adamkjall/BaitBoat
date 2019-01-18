@@ -18,6 +18,7 @@ import android.os.Bundle;
 import android.text.InputType;
 import android.text.method.DigitsKeyListener;
 
+import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.inputmethod.EditorInfo;
