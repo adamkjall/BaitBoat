@@ -1,9 +1,9 @@
-# import newEngineControl
+import newEngineControl
 from socket import *
 from time import ctime
 import RPi.GPIO as GPIO
 
-# mc = newEngineControl.motorControl()
+mc = newEngineControl.motorControl()
 
 HOST = ''
 PORT = 21567
@@ -11,6 +11,7 @@ BUFSIZE = 1024
 ADDR = (HOST,PORT)
 
 tcpSerSock = socket(AF_INET, SOCK_STREAM)
+tcpSerSock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
 tcpSerSock.bind(ADDR)
 tcpSerSock.listen(5)
 
@@ -32,33 +33,33 @@ while True:
                 while True:
                         data = ''
                         data = recv_msg(tcpCliSock, BUFSIZE)
-                        print (data)
+                
                         if not data:
                                 break
+                        
                         if data == 'Left':
-                                # mc.steerLeft()
-                                print ('Command: steerLeft')
+                                mc.steerLeft()
+    
                         if data == 'Right':
-                                # mc.steerRight()
-                                print ('Command: steerRight')
+                                mc.steerRight()
+                                
                         if data == 'Ahead':
-                                # mc.straightAhead()
-                                print ('Command: steerAhead')
+                                mc.straightAhead()
+                                
                         if data == 'Reverse':
-                                # mc.reverse()
-                                print ('Command: reverse')
+                                mc.reverse()
+                            
                         if data == 'Stop':
-                                # mc.stopMotor()
-                                print ('Command: stopMotor')
+                                mc.stopMotor()
+                                
                         if data == 'StartCogMotor':
-                                # mc.cogMotorStart()
-                                print ('Command: cogMotorStart')
+                                mc.cogMotorStart()
+                            
                         if data == 'StopCogMotor':
-                                # mc.cogMotorStop()
-                                print ('Command: cogMotorStop')
+                                mc.cogMotorStop()
+                            
                             
         except KeyboardInterrupt:
-                # Servomotor.close()
+                Servomotor.close()
                 GPIO.cleanup()
 tcpSerSock.close();
-
