@@ -1,64 +1,75 @@
-# import newEngineControl
+import newEngineControl
 from socket import *
 from time import ctime
 import RPi.GPIO as GPIO
 
-# mc = newEngineControl.motorControl()
+mc = newEngineControl.motorControl()
 
 HOST = ''
 PORT = 21567
-BUFSIZE = 1024
+BUFSIZE = 16
 ADDR = (HOST,PORT)
 
 tcpSerSock = socket(AF_INET, SOCK_STREAM)
+tcpSerSock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
 tcpSerSock.bind(ADDR)
 tcpSerSock.listen(5)
 
 
 # receive method that makes sure we have the entire message
-def recv_msg(the_socket, bufsize):
-    total_data = []
-    while True:
-        data = the_socket.recv(bufsize).decode()
-        if not data: break
-        total_data.append(data)
-    return ''.join(total_data)
+#def recv_msg(the_socket, bufsize):
+#    total_data = []
+#    while True:
+#        data = the_socket.recv(bufsize).decode()
+#        if not data: break
+#        total_data.append(data)
+#    return ''.join(total_data)
+
+def process_message(message):
+    if message == 'Left':
+        mc.steerLeft()
+    if message == 'Right':
+        mc.steerRight()          
+    if message == 'Ahead':
+        mc.straightAhead()
+        print ('Ahead')
+    if message == 'Reverse':
+        mc.reverse()           
+    if message == 'Stop':
+        mc.stopMotor()                 
+    if message == 'StartCogMotor':
+        mc.cogMotorStart()        
+    if message == 'StopCogMotor':
+        mc.cogMotorStop()
+                       
 
 while True:
         print ('Waiting for connection')
         tcpCliSock,addr = tcpSerSock.accept()
         print ('...connected from :', addr)
         try:
-                while True:
-                        data = ''
-                        data = recv_msg(tcpCliSock, BUFSIZE)
-                        print (data)
-                        if not data:
-                                break
-                        if data == 'Left':
-                                # mc.steerLeft()
-                                print ('Command: steerLeft')
-                        if data == 'Right':
-                                # mc.steerRight()
-                                print ('Command: steerRight')
-                        if data == 'Ahead':
-                                # mc.straightAhead()
-                                print ('Command: steerAhead')
-                        if data == 'Reverse':
-                                # mc.reverse()
-                                print ('Command: reverse')
-                        if data == 'Stop':
-                                # mc.stopMotor()
-                                print ('Command: stopMotor')
-                        if data == 'StartCogMotor':
-                                # mc.cogMotorStart()
-                                print ('Command: cogMotorStart')
-                        if data == 'StopCogMotor':
-                                # mc.cogMotorStop()
-                                print ('Command: cogMotorStop')
+            buffer = ''
+            i = 0
+            while True:
+                data = tcpCliSock.recv(BUFSIZE).decode()
+                        #data = recv_msg(tcpCliSock, BUFSIZE)
+                
+                if not data:
+                    if buffer:
+                       process_message(buffer)
+                    break
+                        
+                buffer += data
+                commands = buffer.split('|')
+                buffer = commands.pop()
+                for command in commands:
+                    print (i)
+                    i += 1
+                    process_message(command)
+                        
+                         
                             
         except KeyboardInterrupt:
-                # Servomotor.close()
+                Servomotor.close()
                 GPIO.cleanup()
 tcpSerSock.close();
-
