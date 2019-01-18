@@ -39,7 +39,7 @@ import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay;
 public class MainActivity extends AppCompatActivity {
     // Class variables used when connection to the raspberry pi
     private static String serverIP = "192.168.1.5";
-    private static final String SERVER_PORT = "21567";
+    private static final int SERVER_PORT = 21567;
 
     // OpenStreetMap variables
     private MapView mapView;
@@ -47,6 +47,8 @@ public class MainActivity extends AppCompatActivity {
 
     // The sliding menu
     private FloatingToolbar floatingToolbar;
+
+    private TCPClient client;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -70,6 +72,8 @@ public class MainActivity extends AppCompatActivity {
 
         setupJoyStick();
 
+        client = new TCPClient();
+
         // Dialog for ip-address input
         showConnectDialog();
     }
@@ -90,10 +94,11 @@ public class MainActivity extends AppCompatActivity {
                 boolean left = angle >= 135 && angle < 225;
                 boolean reverse = angle >= 225 && angle <= 315;
 
-                if (right) startTask("Right");
-                if (ahead) startTask("Ahead");
-                if (left) startTask("Left");
-                if (reverse) startTask("Reverse");
+                if (right) client.writeCommand("Right");
+                if (ahead) client.writeCommand("Ahead");
+                if (left) client.writeCommand("Left");
+                if (reverse) client.writeCommand("Reverse");
+
             }
         });
     }
@@ -197,8 +202,8 @@ public class MainActivity extends AppCompatActivity {
      */
     private void startTask(String cmd) {
         // The task will handle the output stream
-        SocketAsyncTask task = new SocketAsyncTask();
-        task.execute(serverIP, SERVER_PORT, cmd);
+        //SocketAsyncTask task = new SocketAsyncTask();
+        //task.execute(serverIP, SERVER_PORT, cmd);
     }
 
     /**
@@ -219,6 +224,7 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         serverIP = et_ipAddress.getText().toString();
+                        client.connect(serverIP, SERVER_PORT);
                     }
                 })
                 .setNegativeButton("Cancel", null)
@@ -266,6 +272,14 @@ public class MainActivity extends AppCompatActivity {
         //Configuration.getInstance().save(this, prefs);
         myLocationOverlay.disableMyLocation();
         mapView.onPause();  //needed for compass, my location overlays, v6.0.0 and up
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        if (client != null && client.isConnected()) {
+            client.disconnect();
+        }
     }
 
 }
