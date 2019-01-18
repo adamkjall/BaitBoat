@@ -39,7 +39,7 @@ import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay;
 
 public class MainActivity extends AppCompatActivity {
     // Class variables used when connection to the raspberry pi
-    private static String serverIP = "192.168.1.5";
+    private static String serverIP = "";
     private static final String SERVER_PORT = "21567";
 
     // OpenStreetMap variables
@@ -81,7 +81,6 @@ public class MainActivity extends AppCompatActivity {
      * with the command as a parameter.
      */
     private void setupJoyStick() {
-        // Joystick
         JoyStickView joyStickView = findViewById(R.id.joy);
         joyStickView.setOnMoveListener(new JoyStickView.OnMoveListener() {
             @Override
