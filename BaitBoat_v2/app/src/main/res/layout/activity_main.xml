@@ -14,29 +14,73 @@
         app:floatingAutoHide="false"
         app:floatingMenu="@menu/main" />
 
-    <android.support.design.widget.FloatingActionButton
-        android:id="@+id/fab_menu"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignParentEnd="true"
-        android:layout_margin="8dp"
-        android:background="#000"
-        android:src="@drawable/ic_menu_black_24dp"
-        app:borderWidth="0dp" />
-
-    <android.support.design.widget.FloatingActionButton
-        android:id="@+id/fab_centerMap"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignParentEnd="true"
-        android:layout_alignParentBottom="true"
-        android:layout_margin="8dp"
-        android:src="@drawable/ic_center_map" />
 
     <org.osmdroid.views.MapView
         android:id="@+id/map"
         android:layout_width="fill_parent"
         android:layout_height="fill_parent" />
+
+    <android.support.design.widget.FloatingActionButton
+        android:id="@+id/fab_centerMap"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentBottom="true"
+        android:layout_margin="8dp"
+        android:src="@drawable/ic_center_map" />
+
+    <RelativeLayout
+        android:layout_width="wrap_content"
+        android:layout_height="match_parent"
+        android:layout_alignParentEnd="true"
+        android:orientation="vertical"
+        android:padding="8dp">
+
+        <android.support.design.widget.FloatingActionButton
+            android:id="@+id/fab_menu"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:src="@drawable/ic_menu_black_24dp"
+          />
+
+        <android.support.design.widget.FloatingActionButton
+            android:id="@+id/fab_lights"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@+id/fab_menu"
+            android:layout_marginTop="@dimen/fab_margin"
+            android:src="@drawable/lights"
+            app:backgroundTint="@color/light_grey" />
+
+        <android.support.design.widget.FloatingActionButton
+            android:id="@+id/fab_bait"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@+id/fab_lights"
+            android:layout_marginTop="@dimen/fab_margin"
+            android:src="@drawable/lights_off"
+            app:backgroundTint="@color/light_grey" />
+
+        <android.support.design.widget.FloatingActionButton
+            android:id="@+id/fab_hook"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@+id/fab_bait"
+            android:layout_marginTop="@dimen/fab_margin"
+            android:src="@drawable/hook"
+            app:backgroundTint="@color/light_grey" />
+
+        <android.support.design.widget.FloatingActionButton
+            android:id="@+id/fab_hookStatus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/fab_hook"
+            android:layout_marginTop="@dimen/fab_margin"
+            android:src="@drawable/bait"
+            app:backgroundTint="@color/light_grey" />
+
+
+    </RelativeLayout>
 
     <com.jackandphantom.joystickview.JoyStickView
         android:id="@+id/joy"

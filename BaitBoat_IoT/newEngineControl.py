@@ -26,6 +26,7 @@ class motorControl ():
 #	def __init__(self, threadID, name, counter):
 	def __init__(self):
 		print "Initialising ..."
+		GPIO.setwarning(False)
 		GPIO.setmode(GPIO.BOARD )  						# Use BCM standard for pin references.
 
 		GPIO.setup(12,GPIO.OUT) # Set GPIO Pin 12 as output for left motor enable		
@@ -128,6 +129,6 @@ class motorControl ():
 #
 # Main loop
 				
-control = motorControl()
+#control = motorControl()
 
-control.run()
+#control.run()

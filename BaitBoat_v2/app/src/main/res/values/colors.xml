@@ -9,4 +9,10 @@
     <color name="medium_green">#3d853e</color>
     <color name="light_green">#3c2ae668</color>
 
+    <color name="light_grey">#939292</color>
+    <color name="red">#f70303</color>
+    <color name="green">#07b704</color>
+    <color name="yellow">#d7d727</color>
+    <color name="white">#ffffff</color>
+
 </resources>

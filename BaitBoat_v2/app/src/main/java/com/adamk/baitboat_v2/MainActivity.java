@@ -23,6 +23,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.inputmethod.EditorInfo;
 import android.widget.EditText;
+import android.widget.Toast;
 
 import com.github.rubensousa.floatingtoolbar.FloatingToolbar;
 import com.jackandphantom.joystickview.JoyStickView;
@@ -40,7 +41,7 @@ import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay;
 public class MainActivity extends AppCompatActivity {
     // Class variables used when connection to the raspberry pi
     private static String serverIP = "";
-    private static final String SERVER_PORT = "21567";
+    private static final String SERVER_PORT = "21570";
 
     // OpenStreetMap variables
     private MapView mapView;
@@ -159,7 +160,7 @@ public class MainActivity extends AppCompatActivity {
     private void setupMap(Context context) {
         // Set up the mapView
         mapView = (MapView) findViewById(R.id.map);
-        mapView.setTileSource(TileSourceFactory.MAPNIK);
+        mapView.setTileSource(TileSourceFactory.DEFAULT_TILE_SOURCE);
         mapView.setBuiltInZoomControls(true);
         mapView.setMultiTouchControls(true);
 

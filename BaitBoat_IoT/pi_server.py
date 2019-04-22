@@ -6,7 +6,7 @@ import RPi.GPIO as GPIO
 mc = newEngineControl.motorControl()
 
 HOST = ''
-PORT = 21567
+PORT = 21570
 BUFSIZE = 1024
 ADDR = (HOST,PORT)
 
